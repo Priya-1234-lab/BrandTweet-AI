@@ -11,10 +11,11 @@ import {
   Download,
   RefreshCw,
   CheckCircle2,
-  ArrowLeft,
 } from "lucide-react";
 
-const API = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api";
+const API =
+  import.meta.env.VITE_API_URL ||
+  "http://127.0.0.1:8000/api";
 
 const blank = {
   brand: "",
@@ -43,9 +44,21 @@ const tones = [
   "Friendly and conversational",
 ];
 
+const tweetTypes = [
+  "Conversational",
+  "Promotional",
+  "Witty",
+  "Informative",
+  "Question",
+  "Brand values",
+  "Problem & solution",
+  "Community",
+  "Call to action",
+  "Engagement",
+];
+
 export default function App() {
   const [form, setForm] = useState(blank);
-
   const [activePage, setActivePage] = useState("tweets");
 
   const [tweets, setTweets] = useState([]);
@@ -71,6 +84,28 @@ export default function App() {
     setNotice("");
   }
 
+  function getErrorMessage(e, feature) {
+    console.error(`BrandTweet ${feature} API error:`, e);
+    console.error("API base URL:", API);
+
+    if (e.response) {
+      return (
+        e.response.data?.error ||
+        `Server returned HTTP ${e.response.status}. Check the backend logs.`
+      );
+    }
+
+    if (e.code === "ECONNABORTED") {
+      return "The request timed out. The backend may be waking up or taking too long. Please try again.";
+    }
+
+    if (e.message === "Network Error") {
+      return `Network error connecting to ${API}. Check the API URL and Django CORS settings.`;
+    }
+
+    return `${e.message || "Request failed"}. API URL: ${API}`;
+  }
+
   async function generate(event) {
     event.preventDefault();
 
@@ -81,6 +116,8 @@ export default function App() {
     setVoice([]);
 
     try {
+      console.log("Sending tweet request to:", `${API}/generate/`);
+
       const res = await axios.post(`${API}/generate/`, form, {
         timeout: 60000,
       });
@@ -98,12 +135,8 @@ export default function App() {
           : "Demo drafts are ready. Check your Groq API configuration for live AI generation."
       );
     } catch (e) {
-      setError(
-        e.response?.data?.error ||
-          "Cannot connect to Django. Start the backend on port 8000 and try again."
-      );
-
-      setStatus("Backend offline");
+      setError(getErrorMessage(e, "Generate"));
+      setStatus("Backend connection error");
     } finally {
       setLoading(false);
     }
@@ -118,6 +151,8 @@ export default function App() {
     setVoiceResult([]);
 
     try {
+      console.log("Sending brand voice request to:", `${API}/brand-voice/`);
+
       const res = await axios.post(`${API}/brand-voice/`, form, {
         timeout: 60000,
       });
@@ -130,10 +165,8 @@ export default function App() {
 
       setNotice("Brand voice analysis completed.");
     } catch (e) {
-      setError(
-        e.response?.data?.error ||
-          "Unable to analyze brand voice. Check your Django server and try again."
-      );
+      setError(getErrorMessage(e, "Brand Voice"));
+      setStatus("Backend connection error");
     } finally {
       setFeatureLoading(false);
     }
@@ -148,6 +181,11 @@ export default function App() {
     setCampaignResult([]);
 
     try {
+      console.log(
+        "Sending campaign request to:",
+        `${API}/campaign-content/`
+      );
+
       const res = await axios.post(
         `${API}/campaign-content/`,
         form,
@@ -162,10 +200,8 @@ export default function App() {
 
       setNotice("Campaign content generated successfully.");
     } catch (e) {
-      setError(
-        e.response?.data?.error ||
-          "Unable to generate campaign content. Check your Django server and try again."
-      );
+      setError(getErrorMessage(e, "Campaign"));
+      setStatus("Backend connection error");
     } finally {
       setFeatureLoading(false);
     }
@@ -176,6 +212,7 @@ export default function App() {
       await navigator.clipboard.writeText(text);
       setCopied(index);
       setNotice("Content copied to clipboard.");
+      setError("");
     } catch {
       setError(
         "Copy was blocked by your browser. Select the text and copy it manually."
@@ -185,7 +222,9 @@ export default function App() {
 
   function downloadText(filename, content) {
     const url = URL.createObjectURL(
-      new Blob([content], { type: "text/plain;charset=utf-8" })
+      new Blob([content], {
+        type: "text/plain;charset=utf-8",
+      })
     );
 
     const a = document.createElement("a");
@@ -199,6 +238,12 @@ export default function App() {
     URL.revokeObjectURL(url);
   }
 
+  function safeFilename() {
+    return (
+      form.brand.trim().replace(/[^a-z0-9]+/gi, "-") || "brand"
+    );
+  }
+
   function downloadTweets() {
     const text = [
       `BrandTweet AI — ${form.brand}`,
@@ -210,10 +255,7 @@ export default function App() {
       ...tweets.map((tweet, index) => `${index + 1}. ${tweet}`),
     ].join("\n");
 
-    downloadText(
-      `${form.brand.trim().replace(/[^a-z0-9]+/gi, "-") || "brand"}-tweets.txt`,
-      text
-    );
+    downloadText(`${safeFilename()}-tweets.txt`, text);
   }
 
   function downloadCampaign() {
@@ -221,28 +263,17 @@ export default function App() {
       `BrandTweet AI — ${form.brand}`,
       "CAMPAIGN CONTENT",
       "",
-      ...campaignResult.map((item, index) => `${index + 1}. ${item}`),
+      ...campaignResult.map(
+        (item, index) => `${index + 1}. ${item}`
+      ),
     ].join("\n");
 
-    downloadText(
-      `${form.brand.trim().replace(/[^a-z0-9]+/gi, "-") || "brand"}-campaign.txt`,
-      text
-    );
+    downloadText(`${safeFilename()}-campaign.txt`, text);
   }
 
-  function renderBrandForm() {
+  function renderBrandFields() {
     return (
-      <section className="panel form-panel">
-        <div className="panel-title">
-          <div className="icon">
-            <MessageSquare size={19} />
-          </div>
-          <div>
-            <h2>Tell us about your brand</h2>
-            <p>Provide details to create relevant brand content.</p>
-          </div>
-        </div>
-
+      <>
         <label>
           Brand name <strong>*</strong>
           <input
@@ -270,7 +301,9 @@ export default function App() {
             onChange={(e) => update("objective", e.target.value)}
           >
             {objectives.map((item) => (
-              <option key={item}>{item}</option>
+              <option key={item} value={item}>
+                {item}
+              </option>
             ))}
           </select>
         </label>
@@ -303,10 +336,47 @@ export default function App() {
             onChange={(e) => update("tone", e.target.value)}
           >
             {tones.map((item) => (
-              <option key={item}>{item}</option>
+              <option key={item} value={item}>
+                {item}
+              </option>
             ))}
           </select>
         </label>
+      </>
+    );
+  }
+
+  function renderBrandForm() {
+    return (
+      <section className="panel form-panel">
+        <div className="panel-title">
+          <div className="icon">
+            <MessageSquare size={19} />
+          </div>
+          <div>
+            <h2>Tell us about your brand</h2>
+            <p>Provide details to create relevant brand content.</p>
+          </div>
+        </div>
+
+        <form onSubmit={generate}>
+          {renderBrandFields()}
+
+          <div className="hint">
+            <Bot size={17} />
+            Your details help shape the brand voice and tweet ideas.
+          </div>
+
+          <button className="primary" disabled={loading}>
+            {loading ? (
+              <RefreshCw className="spin" size={17} />
+            ) : (
+              <Sparkles size={17} />
+            )}
+            {loading ? "Creating drafts…" : "Generate 10 tweets"}
+            <span>→</span>
+          </button>
+        </form>
       </section>
     );
   }
@@ -314,8 +384,16 @@ export default function App() {
   function renderMessages() {
     return (
       <>
-        {error && <div className="alert error">{error}</div>}
-        {notice && <div className="alert success">{notice}</div>}
+        {error && (
+          <div className="alert error" role="alert">
+            {error}
+          </div>
+        )}
+        {notice && (
+          <div className="alert success" role="status">
+            {notice}
+          </div>
+        )}
       </>
     );
   }
@@ -335,42 +413,13 @@ export default function App() {
           </h1>
 
           <p>
-            Turn your brand details into social media ideas with
-            varied content styles and a clear brand voice summary.
+            Turn your brand details into social media ideas with varied
+            content styles and a clear brand voice summary.
           </p>
         </section>
 
         <div className="workspace">
-          <section className="panel form-panel">
-            <div className="panel-title">
-              <div className="icon">
-                <MessageSquare size={19} />
-              </div>
-              <div>
-                <h2>Tell us about your brand</h2>
-                <p>A few details help shape your content.</p>
-              </div>
-            </div>
-
-            <form onSubmit={generate}>
-              {renderBrandFields()}
-
-              <div className="hint">
-                <Bot size={17} />
-                Your details help shape the brand voice and tweet ideas.
-              </div>
-
-              <button className="primary" disabled={loading}>
-                {loading ? (
-                  <RefreshCw className="spin" size={17} />
-                ) : (
-                  <Sparkles size={17} />
-                )}
-                {loading ? "Creating drafts…" : "Generate 10 tweets"}
-                <span>→</span>
-              </button>
-            </form>
-          </section>
+          {renderBrandForm()}
 
           <section className="right-col">
             <div className="panel preview">
@@ -464,20 +513,7 @@ export default function App() {
                 <article className="tweet" key={index}>
                   <div className="tweet-head">
                     <span>{String(index + 1).padStart(2, "0")}</span>
-                    <small>
-                      {[
-                        "Conversational",
-                        "Promotional",
-                        "Witty",
-                        "Informative",
-                        "Question",
-                        "Brand values",
-                        "Problem & solution",
-                        "Community",
-                        "Call to action",
-                        "Engagement",
-                      ][index] || "Brand content"}
-                    </small>
+                    <small>{tweetTypes[index] || "Brand content"}</small>
                     <small className="count">{tweet.length}/280</small>
                   </div>
 
@@ -503,78 +539,6 @@ export default function App() {
     );
   }
 
-  // Shared brand fields used in the Tweet Generator form.
-  function renderBrandFields() {
-    return (
-      <>
-        <label>
-          Brand name <strong>*</strong>
-          <input
-            required
-            maxLength={80}
-            value={form.brand}
-            onChange={(e) => update("brand", e.target.value)}
-            placeholder="e.g. FreshBite"
-          />
-        </label>
-
-        <label>
-          Industry / category
-          <input
-            value={form.industry}
-            onChange={(e) => update("industry", e.target.value)}
-            placeholder="e.g. Food, technology, fashion"
-          />
-        </label>
-
-        <label>
-          Campaign objective
-          <select
-            value={form.objective}
-            onChange={(e) => update("objective", e.target.value)}
-          >
-            {objectives.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-
-        <label>
-          Products or services <strong>*</strong>
-          <textarea
-            required
-            rows={4}
-            maxLength={1500}
-            value={form.products}
-            onChange={(e) => update("products", e.target.value)}
-            placeholder="What do you offer?"
-          />
-        </label>
-
-        <label>
-          Target audience
-          <input
-            value={form.audience}
-            onChange={(e) => update("audience", e.target.value)}
-            placeholder="e.g. Students, professionals, parents"
-          />
-        </label>
-
-        <label>
-          Preferred brand tone
-          <select
-            value={form.tone}
-            onChange={(e) => update("tone", e.target.value)}
-          >
-            {tones.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-        </label>
-      </>
-    );
-  }
-
   function renderVoicePage() {
     return (
       <>
@@ -582,11 +546,13 @@ export default function App() {
           <span className="eyebrow">
             <Target size={14} /> BRAND PERSONALITY
           </span>
+
           <h1>
             Discover your
             <br />
             <em>brand voice.</em>
           </h1>
+
           <p>
             Analyze your brand's personality, tone and communication
             style to create more consistent content.
@@ -611,6 +577,7 @@ export default function App() {
             </p>
 
             <button
+              type="button"
               className="primary"
               disabled={featureLoading}
               onClick={analyzeBrandVoice}
@@ -630,6 +597,7 @@ export default function App() {
                 <span className="eyebrow">ANALYSIS RESULTS</span>
                 <h2>{form.brand} Brand Voice</h2>
               </div>
+
               <button
                 className="download"
                 onClick={() =>
@@ -648,11 +616,13 @@ export default function App() {
                 <article className="voice-item" key={index}>
                   <CheckCircle2 size={18} />
                   <p>{item}</p>
+
                   <button
                     className="copy"
                     onClick={() => copyText(item, 100 + index)}
                   >
-                    <Copy size={15} /> Copy
+                    <Copy size={15} />
+                    {copied === 100 + index ? "Copied" : "Copy"}
                   </button>
                 </article>
               ))}
@@ -670,11 +640,13 @@ export default function App() {
           <span className="eyebrow">
             <MessageSquare size={14} /> CAMPAIGN STUDIO
           </span>
+
           <h1>
             Plan your next
             <br />
             <em>brand campaign.</em>
           </h1>
+
           <p>
             Turn your brand details and marketing objective into a
             campaign idea, key message, content approach and call to action.
@@ -699,11 +671,14 @@ export default function App() {
             </p>
 
             <button
+              type="button"
               className="primary"
               disabled={featureLoading}
               onClick={generateCampaignContent}
             >
-              {featureLoading ? "Generating…" : "Generate Campaign Content"}
+              {featureLoading
+                ? "Generating…"
+                : "Generate Campaign Content"}
               <span>→</span>
             </button>
           </section>
@@ -745,7 +720,8 @@ export default function App() {
                     className="copy"
                     onClick={() => copyText(item, 200 + index)}
                   >
-                    <Copy size={15} /> Copy
+                    <Copy size={15} />
+                    {copied === 200 + index ? "Copied" : "Copy"}
                   </button>
                 </article>
               ))}
@@ -769,6 +745,7 @@ export default function App() {
           <div className="logo">
             <Sparkles size={22} />
           </div>
+
           <div>
             <b>BrandTweet</b>
             <small>AI STUDIO</small>
@@ -817,6 +794,7 @@ export default function App() {
           <span>
             Workspace <i>/</i> {pageTitles[activePage]}
           </span>
+
           <span className="pill">
             <Sparkles size={14} /> Brand content studio
           </span>
