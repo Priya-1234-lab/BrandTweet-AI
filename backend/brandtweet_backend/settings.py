@@ -94,9 +94,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5174",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
+    "https://brand-tweet-ai.vercel.app",
 ]
 
 FRONTEND_URL = os.environ.get("FRONTEND_URL")
 
 if FRONTEND_URL:
-    CORS_ALLOWED_ORIGINS.append(FRONTEND_URL.rstrip("/"))
+    FRONTEND_URL = FRONTEND_URL.rstrip("/")
+    if FRONTEND_URL not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append(FRONTEND_URL)
