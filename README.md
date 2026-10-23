@@ -1,26 +1,58 @@
-# BrandTweet AI
+# BrandTweet AI Studio
 
-React + Vite frontend with a Django backend. The app works in demo mode without an AI key. Add a Groq API key to enable AI-generated drafts.
+An AI-powered tweet generation web application built with a React + Vite frontend and a Django backend. The application supports demo mode without an AI key and can generate AI-powered tweet drafts when configured with a Groq API key.
 
-## Start backend (terminal 1)
+## 🚀 Live Demo
+
+**Live Project:** https://brand-tweet-ai.vercel.app
+
+## ✨ Features
+
+- AI-powered tweet draft generation using the Groq API
+- Demo mode available without an AI API key
+- React-based frontend
+- Django backend
+- Configurable AI integration
+
+## 🛠️ Tech Stack
+
+- **Frontend:** React.js, Vite
+- **Backend:** Python, Django
+- **AI Integration:** Groq API
+
+## 💻 Run Locally
+
+### 1. Start the backend
+
 ```powershell
 cd backend
 py -m pip install -r requirements.txt
 py manage.py runserver 8000
 ```
 
-## Start frontend (terminal 2)
+### 2. Start the frontend
+
+Open another terminal and run:
+
 ```powershell
 cd frontend
 npm install
 npm run dev
 ```
-Open the URL shown by Vite, usually http://localhost:5173.
 
-## Enable AI
-Set `GROQ_API_KEY` in the environment before starting Django. Example PowerShell:
+Open the URL displayed by Vite, usually `http://localhost:5173`.
+
+## 🔑 Enable AI Generation
+
+Set the `GROQ_API_KEY` environment variable before starting Django:
+
 ```powershell
 $env:GROQ_API_KEY="your_key_here"
 py manage.py runserver 8000
 ```
-Never put the key in React code or commit it to GitHub.
+
+**Security:** Never expose your API key in frontend code or commit it to GitHub.
+
+## 👩‍💻 Project Purpose
+
+BrandTweet AI Studio demonstrates full-stack web development and Generative AI integration through a practical application for creating social media content.
